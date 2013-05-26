@@ -104,7 +104,7 @@ def fetch_img_of_character(char, root_folder, file_logger=None):
                     raise
 
 
-def remove_empty_characters(root_folder):
+def remove_empty_characters(root_folder, not_analyzed_file_name):
     to_be_deleted = dict()
     for char in os.listdir(root_folder):
         char_path = os.path.join(root_folder, char)
@@ -115,7 +115,7 @@ def remove_empty_characters(root_folder):
 
         if size == 0:
             to_be_deleted[char_path] = char
-    with open(os.path.join(root_folder, "not_analyzed.txt"), "w") as not_analyzed:
+    with open(not_analyzed_file_name, "w") as not_analyzed:
         for folder in to_be_deleted.keys():
             not_analyzed.write(to_be_deleted[folder])
             shutil.rmtree(folder)
@@ -130,7 +130,10 @@ def fetch_all(save_to_folder, charset="gb2312", count=None, pool_size=5):
     count           --  number of characters to fetch
     pool_size       --  number of threading for downloading
     """
-    os.remove(os.path.join(save_to_folder, "not_analyzed.txt"))
+
+    not_analyzed_file_name = os.path.join(save_to_folder, "not_analyzed.txt")
+    if os.path.exists(not_analyzed_file_name):
+        os.remove(not_analyzed_file_name)
     charset = charset.lower()
     if charset == "gb2312":
         characters = get_gb2312_characters()
@@ -162,4 +165,4 @@ def fetch_all(save_to_folder, charset="gb2312", count=None, pool_size=5):
     pool.shutdown()
     pool.wait()
 
-    remove_empty_characters(save_to_folder)
+    remove_empty_characters(save_to_folder, not_analyzed_file_name)
