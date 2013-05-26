@@ -122,6 +122,14 @@ def remove_empty_characters(root_folder):
 
 
 def fetch_all(save_to_folder, charset="gb2312", count=None, pool_size=5):
+    """ Fetch all images of characters in character set GB2312 or GBK from http://www.chineseetymology.org/
+
+    Keyword arguments:
+    save_to_folder  --  the folder that you want to store all the images
+    charset         --  the character set in used; should be 'GB2312' or 'GBK'
+    count           --  number of characters to fetch
+    pool_size       --  number of threading for downloading
+    """
     os.remove(os.path.join(save_to_folder, "not_analyzed.txt"))
     charset = charset.lower()
     if charset == "gb2312":
