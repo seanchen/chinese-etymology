@@ -132,7 +132,7 @@ def fetch_img_of_character(char, root_folder, dict_not_found):
                     except HTTPError as e:
                         msg = 'Error \"%s\" occurs when downloading %s to %s' % (e.reason, img_url, gif_full_path)
                         if e.code == 404:
-                            dict_not_found[img_url] = gif_full_path
+                            dict_not_found[gif_full_path] = img_url
                             logger.warning(msg)
                             break
                         else:
@@ -170,7 +170,7 @@ def remove_empty_characters(root_folder, not_analyzed_file_name):
 
 def write_not_found(not_found_file_name, dict_not_found):
     with open(not_found_file_name, "w") as not_found_file:
-        for (src, dst) in dict_not_found.items():
+        for (dst, src) in sorted(dict_not_found.items()):
             not_found_file.write('%s\t-/->\t%s\n' % (src,dst))
 
 
