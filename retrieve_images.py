@@ -17,6 +17,10 @@ from lxml.html import fromstring
 from datetime import datetime
 
 
+logger = logging.getLogger("fetch")
+logger.setLevel(logging.INFO)
+logger.addHandler(logging.FileHandler('{:%Y%m%d%H%M%S}'.format(datetime.now()) + '.log', "w"))
+
 def get_gb2312_characters():
     # equivalent to level 2 of GBK
     higher_range = range(0xb0, 0xf7 + 1)
@@ -27,6 +31,8 @@ def get_gb2312_characters():
             try:
                 yield encoding.to_bytes(2, byteorder='big').decode(encoding='gb2312')
             except UnicodeDecodeError:
+                hex_literal = '0x' + ''.join('%02x' % byte for byte in encoding.to_bytes(2, byteorder='big'))
+                logging.warning('Unable to decode %s with GB2312' % hex_literal)
                 pass
 
 
@@ -35,9 +41,9 @@ def get_gbk_characters():
     higher_range_level2 = range(0xb0, 0xf7 + 1)
     lower_range_level2 = range(0xa1, 0xfe + 1)
     higher_range_level3 = range(0x81, 0xa0 + 1)
-    lower_range_level3 = itertools.chain(range(0x40, 0x7f), range(0x7f + 1, 0xfe + 1))
+    lower_range_level3 = list(itertools.chain(range(0x40, 0x7f), range(0x7f + 1, 0xfe + 1)))
     higher_range_level4 = range(0xaa, 0xfe + 1)
-    lower_range_level4 = itertools.chain(range(0x40, 0x7f), range(0x7f + 1, 0xa0 + 1))
+    lower_range_level4 = list(itertools.chain(range(0x40, 0x7f), range(0x7f + 1, 0xa0 + 1)))
 
     gbk_ranges = {2: (higher_range_level2, lower_range_level2),
                   3: (higher_range_level3, lower_range_level3),
@@ -51,13 +57,15 @@ def get_gbk_characters():
                 try:
                     yield encoding.to_bytes(2, byteorder='big').decode(encoding='gbk')
                 except UnicodeDecodeError:
+                    hex_literal = '0x' + ''.join('%02x' % byte for byte in encoding.to_bytes(2, byteorder='big'))
+                    logging.warning('Unable to decode %s with GBK' % hex_literal)
                     pass
 
 # def get_gb18030_2005_characters():
 #     return []
 
 
-def fetch_img_of_character(char, root_folder, file_logger=None):
+def fetch_img_of_character(char, root_folder, dict_not_found):
     root_char = os.path.join(root_folder, char)
     if not os.path.exists(root_char):
         os.makedirs(root_char)
@@ -72,20 +80,22 @@ def fetch_img_of_character(char, root_folder, file_logger=None):
         try:
             page = urlopen(url).read().decode('utf8')
             break
-        except URLError as e:
+        except (TimeoutError,URLError,ConnectionError) as e:
             attempts += 1
-            msg = '\"%s\" occurs when opening page %s. Retrying.' % (e.reason, url)
-            if file_logger is not None:
-                file_logger.warning(msg)
+            if isinstance(e,TimeoutError):
+                msg = 'Time out when opening page %s. Retrying.' % url
+            elif isinstance(e, URLError):
+                msg = 'Error \"%s\" occurs when opening page %s. Retrying.' % (e.reason, url)
+            elif isinstance(e, ConnectionError):
+                msg = 'Error \"%s\" occurs when opening page %s. Retrying.' % (str(e), url)
             else:
-                logging.warning(msg)
+                msg = 'Reached impossible branch.'
+            logger.warning(msg)
+
 
     if attempts == max_attempts:
         msg = 'Max attempts reached. Fail to open page ' + url
-        if file_logger is not None:
-            file_logger.error(msg)
-        else:
-            logging.error(msg)
+        logger.error(msg)
         return
 
     page = fromstring(page)
@@ -118,46 +128,28 @@ def fetch_img_of_character(char, root_folder, file_logger=None):
                         break
                     except TimeoutError:
                         msg = 'Time out when downloading %s to %s. Retrying.' % (img_url, gif_full_path)
-                        if file_logger is not None:
-                            file_logger.warning(msg)
-                        else:
-                            logging.warning(msg)
+                        logger.warning(msg)
                     except HTTPError as e:
-                        msg = '\"%s: %s\" occurs when downloading %s to %s' % (
-                            e.code, e.reason, img_url, gif_full_path)
+                        msg = 'Error \"%s\" occurs when downloading %s to %s' % (e.reason, img_url, gif_full_path)
                         if e.code == 404:
-                            if file_logger is not None:
-                                file_logger.warning(msg)
-                            else:
-                                logging.warning(msg)
+                            dict_not_found[img_url] = gif_full_path
+                            logger.warning(msg)
                             break
                         else:
                             msg += ' Retrying.'
-                            if file_logger is not None:
-                                file_logger.warning(msg)
-                            else:
-                                logging.warning(msg)
+                            logger.warning(msg)
                     except URLError as e:
-                        msg = '\"%s\" occurs when downloading %s to %s. Retrying.' % (
+                        msg = 'Error \"%s\" occurs when downloading %s to %s. Retrying.' % (
                             e.reason, img_url, gif_full_path)
-                        if file_logger is not None:
-                            file_logger.warning(msg)
-                        else:
-                            logging.warning(msg)
+                        logger.warning(msg)
                     except ConnectionError as e:
-                        msg = '\"%s\" occurs when downloading %s to %s. Retrying.' % (
+                        msg = 'Error \"%s\" occurs when downloading %s to %s. Retrying.' % (
                             str(e), img_url, gif_full_path)
-                        if file_logger is not None:
-                            file_logger.warning(msg)
-                        else:
-                            logging.warning(msg)
+                        logger.warning(msg)
 
                 if attempts == max_attempts:
                     msg = 'Max attempts reached. Fail to download image ' + img_url
-                    if file_logger is not None:
-                        file_logger.error(msg)
-                    else:
-                        logging.error(msg)
+                    logger.error(msg)
 
 
 def remove_empty_characters(root_folder, not_analyzed_file_name):
@@ -176,8 +168,13 @@ def remove_empty_characters(root_folder, not_analyzed_file_name):
             not_analyzed.write(to_be_deleted[folder])
             shutil.rmtree(folder)
 
+def write_not_found(not_found_file_name, dict_not_found):
+    with open(not_found_file_name, "w") as not_found_file:
+        for (src, dst) in dict_not_found.items():
+            not_found_file.write('%s\t-/->\t%s\n' % (src,dst))
 
-def fetch_all(save_to_folder, charset="gb2312", count=None, pool_size=5):
+
+def fetch_all(save_to_folder, charset, count=None, pool_size=5):
     """ Fetch all images of characters in character set GB2312 or GBK from http://www.chineseetymology.org/
 
     Keyword arguments:
@@ -187,6 +184,8 @@ def fetch_all(save_to_folder, charset="gb2312", count=None, pool_size=5):
     pool_size       --  number of threading for downloading
     """
 
+    if not os.path.exists(save_to_folder):
+        os.mkdir(save_to_folder)
     not_analyzed_file_name = os.path.join(save_to_folder, "not_analyzed.txt")
     if os.path.exists(not_analyzed_file_name):
         os.remove(not_analyzed_file_name)
@@ -204,14 +203,12 @@ def fetch_all(save_to_folder, charset="gb2312", count=None, pool_size=5):
     if count is not None:
         characters = itertools.islice(characters, count)
 
-    log_file_name = '{:%Y%m%d%H%M%S}'.format(datetime.now()) + '.log'
-    logger = logging.getLogger("fetch")
-    logger.setLevel(logging.INFO)
-    logger.addHandler(logging.FileHandler(log_file_name, "w"))
+    not_found = dict()
 
     pool = workerpool.WorkerPool(size=pool_size)
-    pool.map(fetch_img_of_character, characters, itertools.repeat(save_to_folder), itertools.repeat(logger))
+    pool.map(fetch_img_of_character, characters, itertools.repeat(save_to_folder), itertools.repeat(not_found))
     pool.shutdown()
     pool.wait()
 
     remove_empty_characters(save_to_folder, not_analyzed_file_name)
+    write_not_found(os.path.join(save_to_folder, "not_found.txt"), not_found)
