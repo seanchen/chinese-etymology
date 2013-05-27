@@ -121,7 +121,7 @@ def fetch_img_of_character(char, root_folder, file_logger=None):
                         else:
                             logging.warning(msg)
                     except HTTPError as e:
-                        msg = '\"%s: %s\" occurs when downloading %s to %s.' % (
+                        msg = '\"%s: %s\" occurs when downloading %s to %s' % (
                             e.code, e.reason, img_url, gif_full_path)
                         if e.code == 404:
                             if file_logger is not None:
@@ -135,9 +135,16 @@ def fetch_img_of_character(char, root_folder, file_logger=None):
                                 file_logger.warning(msg)
                             else:
                                 logging.warning(msg)
-                    except (URLError, ConnectionResetError) as e:
+                    except URLError as e:
                         msg = '\"%s\" occurs when downloading %s to %s. Retrying.' % (
                             e.reason, img_url, gif_full_path)
+                        if file_logger is not None:
+                            file_logger.warning(msg)
+                        else:
+                            logging.warning(msg)
+                    except ConnectionError as e:
+                        msg = '\"%s\" occurs when downloading %s to %s. Retrying.' % (
+                            str(e), img_url, gif_full_path)
                         if file_logger is not None:
                             file_logger.warning(msg)
                         else:
