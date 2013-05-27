@@ -125,9 +125,9 @@ def fetch_img_of_character(char, root_folder, file_logger=None):
                             e.code, e.reason, img_url, gif_full_path)
                         if e.code == 404:
                             if file_logger is not None:
-                                file_logger.warning(msg)
+                                file_logger.error(msg)
                             else:
-                                logging.warning(msg)
+                                logging.error(msg)
                             break
                         else:
                             msg += ' Retrying.'
