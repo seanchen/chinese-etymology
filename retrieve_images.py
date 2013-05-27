@@ -7,6 +7,7 @@ import logging
 import itertools
 import shutil
 from urllib.error import URLError
+from urllib.error import HTTPError
 from urllib.parse import quote
 from urllib.request import urlopen
 from urllib.request import urlretrieve
@@ -108,7 +109,7 @@ def fetch_img_of_character(char, root_folder, file_logger=None):
             gif_full_path = os.path.join(folder_full, gif_name)
             if not os.path.exists(gif_full_path):
                 img_url = url_root + img_src
-                attempts = 0;
+                attempts = 0
                 while attempts < max_attempts:
                     try:
                         urlretrieve(img_url, gif_full_path)
@@ -119,7 +120,22 @@ def fetch_img_of_character(char, root_folder, file_logger=None):
                             file_logger.warning(msg)
                         else:
                             logging.warning(msg)
-                    except URLError as e:
+                    except HTTPError as e:
+                        msg = '\"%s: %s\" occurs when downloading %s to %s.' % (
+                            e.code, e.reason, img_url, gif_full_path)
+                        if e.code == 404:
+                            if file_logger is not None:
+                                file_logger.warning(msg)
+                            else:
+                                logging.warning(msg)
+                            break
+                        else:
+                            msg += ' Retrying.'
+                            if file_logger is not None:
+                                file_logger.warning(msg)
+                            else:
+                                logging.warning(msg)
+                    except (URLError, ConnectionResetError) as e:
                         msg = '\"%s\" occurs when downloading %s to %s. Retrying.' % (
                             e.reason, img_url, gif_full_path)
                         if file_logger is not None:
@@ -178,13 +194,6 @@ def fetch_all(save_to_folder, charset="gb2312", count=None, pool_size=5):
 
     if count is not None:
         characters = itertools.islice(characters, count)
-
-    modified_time = lambda f: os.stat(os.path.join(save_to_folder, f)).st_mtime
-
-    downloaded = sorted(os.listdir(save_to_folder), key=modified_time)
-    del downloaded[-(2*pool_size):]
-    downloaded = {char: 1 for char in downloaded}
-    characters = itertools.filterfalse(lambda char: char in downloaded, characters)
 
     log_file_name = '{:%Y%m%d%H%M%S}'.format(datetime.now()) + '.log'
     logger = logging.getLogger("fetch")
