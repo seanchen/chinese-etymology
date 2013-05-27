@@ -48,8 +48,10 @@ def get_gbk_characters():
         for higher in higher_range:
             for lower in lower_range:
                 encoding = (higher << 8) | lower
-                yield encoding.to_bytes(2, byteorder='big').decode(encoding='gbk')
-
+                try:
+                    yield encoding.to_bytes(2, byteorder='big').decode(encoding='gbk')
+                except UnicodeDecodeError:
+                    pass
 
 # def get_gb18030_2005_characters():
 #     return []
