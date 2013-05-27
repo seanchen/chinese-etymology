@@ -6,7 +6,7 @@ import os
 import logging
 import itertools
 import shutil
-from urllib.error import HTTPError
+from urllib.error import URLError
 from urllib.parse import quote
 from urllib.request import urlopen
 from urllib.request import urlretrieve
@@ -23,7 +23,10 @@ def get_gb2312_characters():
     for higher in higher_range:
         for lower in lower_range:
             encoding = (higher << 8) | lower
-            yield encoding.to_bytes(2, byteorder='big').decode(encoding='gb2312')
+            try:
+                yield encoding.to_bytes(2, byteorder='big').decode(encoding='gb2312')
+            except UnicodeDecodeError:
+                pass
 
 
 def get_gbk_characters():
@@ -59,7 +62,25 @@ def fetch_img_of_character(char, root_folder, file_logger=None):
     url_root = 'http://www.chineseetymology.org'
     url = 'http://www.chineseetymology.org/CharacterEtymology.aspx?characterInput=' \
           + quote(char)
-    page = urlopen(url).read().decode('utf8')
+
+    attempts = 0
+    max_attempts = 20
+    while attempts < max_attempts:
+        try:
+            page = urlopen(url).read().decode('utf8')
+            break
+        except URLError as e:
+            attempts += 1
+            msg = '\"%s\" occurs when opening page %s. Retrying.' % (e.reason, url)
+            if file_logger is not None:
+                file_logger.warning(msg)
+
+    if attempts == max_attempts:
+        msg = 'Max attempts reached. Fail to open page ' + url
+        if file_logger is not None:
+            file_logger.error(msg)
+        return
+
     page = fromstring(page)
 
     seal_selector = CSSSelector("span#SealImages img")
@@ -83,25 +104,25 @@ def fetch_img_of_character(char, root_folder, file_logger=None):
             gif_full_path = os.path.join(folder_full, gif_name)
             if not os.path.exists(gif_full_path):
                 img_url = url_root + img_src
-                try:
-                    urlretrieve(img_url, gif_full_path)
-                except TimeoutError:
-                    msg = 'Time out when downloading %s to %s\n' % (img_url, gif_full_path)
-                    logging.error(msg)
+                attempts = 0;
+                while attempts < max_attempts:
+                    try:
+                        urlretrieve(img_url, gif_full_path)
+                        break
+                    except TimeoutError:
+                        msg = 'Time out when downloading %s to %s. Retrying.' % (img_url, gif_full_path)
+                        if file_logger is not None:
+                            file_logger.warning(msg)
+                    except URLError as e:
+                        msg = '\"%s\" occurs when downloading %s to %s. Retrying.' % (
+                            e.reason, img_url, gif_full_path)
+                        if file_logger is not None:
+                            file_logger.warning(msg)
+
+                if attempts == max_attempts:
+                    msg = 'Max attempts reached. Fail to download image ' + img_url
                     if file_logger is not None:
                         file_logger.error(msg)
-                except HTTPError as e:
-                    msg = 'Error (%s: %s) occurs when downloading %s to %s\n' % (
-                        e.code, e.reason, img_url, gif_full_path)
-                    logging.error(msg)
-                    if file_logger is not None:
-                        file_logger.error(msg)
-                except Exception as e:
-                    msg = 'Error: %s occurs. Execution halted.' % str(e)
-                    logging.critical(msg)
-                    if file_logger is not None:
-                        file_logger.critical(msg)
-                    raise
 
 
 def remove_empty_characters(root_folder, not_analyzed_file_name):
@@ -151,13 +172,13 @@ def fetch_all(save_to_folder, charset="gb2312", count=None, pool_size=5):
     modified_time = lambda f: os.stat(os.path.join(save_to_folder, f)).st_mtime
 
     downloaded = sorted(os.listdir(save_to_folder), key=modified_time)
-    del downloaded[-10:]
+    del downloaded[-(2*pool_size):]
     downloaded = {char: 1 for char in downloaded}
     characters = itertools.filterfalse(lambda char: char in downloaded, characters)
 
     log_file_name = '{:%Y%m%d%H%M%S}'.format(datetime.now()) + '.log'
     logger = logging.getLogger("fetch")
-    logger.setLevel(logging.ERROR)
+    logger.setLevel(logging.INFO)
     logger.addHandler(logging.FileHandler(log_file_name, "w"))
 
     pool = workerpool.WorkerPool(size=pool_size)
