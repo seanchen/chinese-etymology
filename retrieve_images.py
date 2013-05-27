@@ -174,7 +174,7 @@ def write_not_found(not_found_file_name, dict_not_found):
             not_found_file.write('%s\t-/->\t%s\n' % (src,dst))
 
 
-def fetch_all(save_to_folder, charset, count=None, pool_size=5):
+def fetch_all(charset, count=None, pool_size=5):
     """ Fetch all images of characters in character set GB2312 or GBK from http://www.chineseetymology.org/
 
     Keyword arguments:
@@ -183,12 +183,6 @@ def fetch_all(save_to_folder, charset, count=None, pool_size=5):
     count           --  number of characters to fetch
     pool_size       --  number of threading for downloading
     """
-
-    if not os.path.exists(save_to_folder):
-        os.mkdir(save_to_folder)
-    not_analyzed_file_name = os.path.join(save_to_folder, "not_analyzed.txt")
-    if os.path.exists(not_analyzed_file_name):
-        os.remove(not_analyzed_file_name)
     charset = charset.lower()
     if charset == "gb2312":
         characters = get_gb2312_characters()
@@ -199,6 +193,13 @@ def fetch_all(save_to_folder, charset, count=None, pool_size=5):
     else:
         print("Only \"GB2312\" and \"GBK\" are accepted")
         return
+
+    save_to_folder = charset
+    if not os.path.exists(save_to_folder):
+        os.mkdir(save_to_folder)
+    not_analyzed_file_name = os.path.join(save_to_folder, "not_analyzed.txt")
+    if os.path.exists(not_analyzed_file_name):
+        os.remove(not_analyzed_file_name)
 
     if count is not None:
         characters = itertools.islice(characters, count)
