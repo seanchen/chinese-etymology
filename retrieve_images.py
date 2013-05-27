@@ -74,11 +74,15 @@ def fetch_img_of_character(char, root_folder, file_logger=None):
             msg = '\"%s\" occurs when opening page %s. Retrying.' % (e.reason, url)
             if file_logger is not None:
                 file_logger.warning(msg)
+            else:
+                logging.warning(msg)
 
     if attempts == max_attempts:
         msg = 'Max attempts reached. Fail to open page ' + url
         if file_logger is not None:
             file_logger.error(msg)
+        else:
+            logging.error(msg)
         return
 
     page = fromstring(page)
@@ -113,16 +117,22 @@ def fetch_img_of_character(char, root_folder, file_logger=None):
                         msg = 'Time out when downloading %s to %s. Retrying.' % (img_url, gif_full_path)
                         if file_logger is not None:
                             file_logger.warning(msg)
+                        else:
+                            logging.warning(msg)
                     except URLError as e:
                         msg = '\"%s\" occurs when downloading %s to %s. Retrying.' % (
                             e.reason, img_url, gif_full_path)
                         if file_logger is not None:
                             file_logger.warning(msg)
+                        else:
+                            logging.warning(msg)
 
                 if attempts == max_attempts:
                     msg = 'Max attempts reached. Fail to download image ' + img_url
                     if file_logger is not None:
                         file_logger.error(msg)
+                    else:
+                        logging.error(msg)
 
 
 def remove_empty_characters(root_folder, not_analyzed_file_name):
