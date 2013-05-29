@@ -68,16 +68,21 @@ class ChineseEtymologyData:
                         feature = np.reshape(img, np.size(img))
                         yield (character, category, feature)
 
-    def __init__(self, init_folder):
-        self.__IMAGE_WIDTH = 64
-        self.__IMAGE_HEIGHT = 64
-        bulk = list(ChineseEtymologyData.__get_member_generator(init_folder, self.__IMAGE_WIDTH, self.__IMAGE_HEIGHT))
-        sample_count = len(bulk)
+    def __init__(self, init_folder=None):
+        if init_folder is not None:
+            self.__IMAGE_WIDTH = 64
+            self.__IMAGE_HEIGHT = 64
+            bulk = list(ChineseEtymologyData.__get_member_generator(init_folder, self.__IMAGE_WIDTH, self.__IMAGE_HEIGHT))
+            sample_count = len(bulk)
 
-        self.__data = np.empty((sample_count,), dtype=[('Characters', '<U1'), ('Categories', '<U6'), ('FeatureMatrix', 'float', self.__IMAGE_WIDTH * self.__IMAGE_HEIGHT)])
+            self.__data = np.empty((sample_count,), dtype=[('Characters', '<U1'), ('Categories', '<U6'), ('FeatureMatrix', 'float', self.__IMAGE_WIDTH * self.__IMAGE_HEIGHT)])
 
-        for i in range(sample_count):
-            (self.__data['Characters'][i], self.__data['Categories'][i], self.__data['FeatureMatrix'][i,:]) = bulk[i]
+            for i in range(sample_count):
+                (self.__data['Characters'][i], self.__data['Categories'][i], self.__data['FeatureMatrix'][i,:]) = bulk[i]
+        else:
+            self.__IMAGE_WIDTH = None
+            self.__IMAGE_HEIGHT = None
+            self.__data = None
 
     @property
     def image_width(self):
@@ -135,4 +140,23 @@ class ChineseEtymologyData:
             print('Unsupported character set.')
             return
         with h5py.File(src, 'r') as hdf5_file:
-            pass
+            group = hdf5_file[charset]
+            characters = group['Characters']
+            categories = group['Categories']
+            feature_matrix = group['FeatureMatrix']
+            (sample_count, dimension) = feature_matrix.shape
+            chinese_etymology_data = ChineseEtymologyData()
+            chinese_etymology_data.__IMAGE_WIDTH = feature_matrix.attrs['ImageWidth']
+            chinese_etymology_data.__IMAGE_HEIGHT = feature_matrix.attrs['ImageHeight']
+
+            chinese_etymology_data.__data = np.empty((sample_count,), dtype=[('Characters', '<U1'),
+                                                                             ('Categories', '<U6'),
+                                                                             ('FeatureMatrix', 'float', chinese_etymology_data.__IMAGE_WIDTH * chinese_etymology_data.__IMAGE_HEIGHT)])
+
+            chinese_etymology_data.__data['Characters'] = [char.decode(charset) for char in characters]
+            chinese_etymology_data.__data['Categories'] = [cate.decode('utf8') for cate in categories]
+            chinese_etymology_data.__data['FeatureMatrix'] = feature_matrix
+
+            return chinese_etymology_data
+
+
