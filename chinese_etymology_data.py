@@ -108,26 +108,31 @@ class ChineseEtymologyData:
         with h5py.File(dst, 'w') as hdf5_file:
             gb2312_group = hdf5_file.create_group("GB2312")
             gb2312 = ChineseEtymologyData(gb2312_folder)
-            gb2312_group.create_dataset("ImageWidth", data=gb2312.image_width)
-            gb2312_group.create_dataset("ImageHeight", data=gb2312.image_height)
             gb2312_characters = gb2312_group.create_dataset("Characters", gb2312.characters.shape, '|S2')
             gb2312_characters[...] = [char.encode('gb2312') for char in gb2312.characters]
             gb2312_categories = gb2312_group.create_dataset("Categories", gb2312.categories.shape, '|S6')
             gb2312_categories[...] = [cate.encode('utf8') for cate in gb2312.categories]
             gb2312_feature_matrix = gb2312_group.create_dataset("FeatureMatrix", gb2312.feature_matrix.shape, 'float')
             gb2312_feature_matrix[...] = gb2312.feature_matrix
+            gb2312_feature_matrix.attrs["ImageWidth"] = gb2312.image_width
+            gb2312_feature_matrix.attrs["ImageHeight"] = gb2312.image_height
 
             gbk_group = hdf5_file.create_group("GBK")
             gbk = ChineseEtymologyData(gbk_folder)
-            gbk_group.create_dataset("ImageWidth", data=gbk.image_width)
-            gbk_group.create_dataset("ImageHeight", data=gbk.image_height)
             gbk_characters = gbk_group.create_dataset("Characters", gbk.characters.shape, '|S2')
             gbk_characters[...] = [char.encode('gbk') for char in gbk.characters]
             gbk_categories = gbk_group.create_dataset("Categories", gbk.categories.shape, '|S6')
             gbk_categories[...] = [cate.encode('utf8') for cate in gbk.categories]
             gbk_feature_matrix = gbk_group.create_dataset("FeatureMatrix", gbk.feature_matrix.shape, 'float')
             gbk_feature_matrix[...] = gbk.feature_matrix
+            gbk_feature_matrix.attrs["ImageWidth"] = gbk.image_width
+            gbk_feature_matrix.attrs["ImageHeight"] = gbk.image_height
 
     @staticmethod
-    def load_hdf5(src):
-        pass
+    def load_hdf5(src, charset):
+        charset = charset.upper()
+        if not (charset == 'GB2312' or charset == "GBK"):
+            print('Unsupported character set.')
+            return
+        with h5py.File(src, 'r') as hdf5_file:
+            pass
