@@ -39,4 +39,4 @@ See `chinese_etymology_data.py` for further detail.
 Special thanks
 -----------------
 
-Thanks [Uncle Hanzi](mailto:richard.sears.tn@gmail.com) (汉字叔叔) for hosting the website. Please consider [donation](http://www.chineseetymology.org/)!
+Thanks [Uncle Hanzi](mailto:richard.sears.tn@gmail.com) (汉字叔叔) for the website. Please consider [donation](http://www.chineseetymology.org/)!
