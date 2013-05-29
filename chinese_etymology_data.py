@@ -1,4 +1,6 @@
-__author__ = 'Ziyuan'
+#!/user/bin/python3
+#coding=utf-8
+
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -46,6 +48,15 @@ def _remove_margin(img):
 
 
 class ChineseEtymologyData:
+    """
+    The class for the normalized and structured data of http://www.chineseetymology.org/.
+    Here normalization means a sequence of operations to each image including:
+        chopping out unnecessary margin,
+        resizing to 64x64,
+        binarizing,
+        vectorizing into a 4096-lengthed vector in row-major order.
+
+    """
 
     @staticmethod
     def __get_member_generator(init_folder, img_width, img_height):
@@ -86,31 +97,69 @@ class ChineseEtymologyData:
 
     @property
     def image_width(self):
+        """
+        Return the width of all images.
+        """
         return self.__IMAGE_WIDTH
 
     @property
     def image_height(self):
+        """
+        Return the height of all images.
+        """
         return self.__IMAGE_HEIGHT
 
     @property
     def data_frame(self):
+        """
+        Return the data frame consisting of characters, categories, and feature matrix.
+        """
         return self.__data
 
     @property
     def characters(self):
+        """
+        Return the vector of characters that the images are corresponding to.
+        """
         return self.__data['Characters']
 
     @property
     def categories(self):
+        """
+        Return the vector of categories that the images are corresponding to, in which each entry is one of 'bronze', 'lst', 'oracle', and 'seal'.
+        """
         return self.__data['Categories']
 
     @property
     def feature_matrix(self):
+        """
+        Return the feature matrix, whose rows correspond to samples and columns correspond to pixels.
+        """
         return self.__data['FeatureMatrix']
 
     @staticmethod
-    def create_hdf5(gb2312_folder, gbk_folder, dst):
-        with h5py.File(dst, 'w') as hdf5_file:
+    def create_hdf5(gb2312_folder, gbk_folder, hdf5_dst):
+        """
+        Create a HDF5 file for both GB2312 character set and GBK character set, whose hierarchy is:
+        /GB2312
+            /Categories
+            /Characters
+            /FeatureMatrix
+                attr: ImageHeight
+                attr: ImageWidth
+        /GBK
+            /Categories
+            /Characters
+            /FeatureMatrix
+                attr: ImageHeight
+                attr: ImageWidth
+
+        Keyword arguments:
+        gb2312_folder   --  the folder that keeps images of GB2312 character set, which should be created from utils_fetch.fetch_all
+        gbk_folder      --  the folder that keeps images of GBK character set, which should be created from utils_fetch.fetch_all
+        hdf5_dst        --  the name/path of the output HDF5 file
+        """
+        with h5py.File(hdf5_dst, 'w') as hdf5_file:
             gb2312_group = hdf5_file.create_group("GB2312")
             gb2312 = ChineseEtymologyData(gb2312_folder)
             gb2312_characters = gb2312_group.create_dataset("Characters", gb2312.characters.shape, '|S2')
@@ -134,12 +183,19 @@ class ChineseEtymologyData:
             gbk_feature_matrix.attrs["ImageHeight"] = gbk.image_height
 
     @staticmethod
-    def load_hdf5(src, charset):
+    def load_hdf5(hdf5_src, charset):
+        """
+        Create an ChineseEtymologyData object from an HDF5 file that is previously created by create_hdf5
+
+        Keyword arguments:
+        hdf5_src    --  the name/path of the input HDF5 file
+        charset     --  the name of the group/character set from which one wants to load, should be either 'GB2312' or 'GBK' (case insensitive)
+        """
         charset = charset.upper()
         if not (charset == 'GB2312' or charset == "GBK"):
             print('Unsupported character set.')
             return
-        with h5py.File(src, 'r') as hdf5_file:
+        with h5py.File(hdf5_src, 'r') as hdf5_file:
             group = hdf5_file[charset]
             characters = group['Characters']
             categories = group['Categories']

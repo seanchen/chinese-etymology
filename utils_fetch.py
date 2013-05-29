@@ -1,6 +1,6 @@
-#!/usr/bin/python
+#!/user/bin/python3
 #coding=utf-8
-__author__ = 'Ziyuan'
+
 
 import os
 import logging
@@ -179,7 +179,7 @@ def fetch_all(charset, character_count=None, thread_count=5):
     """ Fetch all images of characters in character set GB2312 or GBK from http://www.chineseetymology.org/
 
     Keyword arguments:
-    charset         --  the character set in used; should be 'GB2312' or 'GBK'
+    charset         --  the character set in used; should be 'GB2312' or 'GBK' (case insensitive)
     character_count --  number of characters to fetch
     thread_count    --  number of threading for downloading
     """
