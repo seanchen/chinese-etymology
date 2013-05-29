@@ -15,7 +15,7 @@ See `utils_fetch.py` for further detail.
 
 ### Normalized data ###
 
-The normalized and structured data in HDF5 can be downloaded at [NormalizedChineseEtymologyData](https://dl.dropboxusercontent.com/u/1335302/NormalizedChineseEtymologyData.7z) (43.1MB).
+The normalized and structured data in HDF5 can be downloaded at [NormalizedChineseEtymologyData.7z](https://dl.dropboxusercontent.com/u/1335302/NormalizedChineseEtymologyData.7z) (43.1MB).
 
 Normalization means a sequence of operations to each image including: chopping out unnecessary margin, resizing to 64x64, binarizing, and vectorizing into a 4096-lengthed vector in row-major order.
 
